@@ -1,0 +1,72 @@
+// Prisma Schema for RFP Management System
+// Database: MySQL 5.7+ / 8.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Vendor Model
+model Vendor {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  tags      String?    @db.Text // Comma-separated tags
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  // Relations
+  proposals Proposal[]
+
+  @@map("vendors")
+}
+
+// RFP (Request for Proposal) Model
+model RFP {
+  id              String     @id @default(uuid())
+  title           String
+  content         String     @db.Text // Raw user text input
+  structuredData  Json       // AI-parsed structured data (items, budget, timeline, etc.)
+  status          RFPStatus  @default(DRAFT)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  sentAt          DateTime?
+  
+  // Relations
+  proposals       Proposal[]
+
+  @@map("rfps")
+}
+
+// Proposal Model (Vendor responses)
+model Proposal {
+  id              String     @id @default(uuid())
+  rfpId           String
+  vendorId        String
+  rawEmailBody    String     @db.Text // Original email content
+  aiExtractedData Json       // AI-parsed proposal data (price, timeline, terms, etc.)
+  aiScore         Float?     // AI-generated score (0-100)
+  aiSummary       String?    @db.Text // AI-generated summary
+  receivedAt      DateTime   @default(now())
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  // Relations
+  rfp             RFP        @relation(fields: [rfpId], references: [id], onDelete: Cascade)
+  vendor          Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([rfpId])
+  @@index([vendorId])
+  @@map("proposals")
+}
+
+// Enum for RFP Status
+enum RFPStatus {
+  DRAFT
+  SENT
+  CLOSED
+}
